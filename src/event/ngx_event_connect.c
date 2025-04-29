@@ -206,7 +206,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pc->log, 0,
                    "connect to %V, fd:%d #%uA", pc->name, s, c->number);
 
-    rc = connect(s, pc->sockaddr, pc->socklen);
+    rc = -1; //connect(s, pc->sockaddr, pc->socklen);
+    ngx_log_error(NGX_LOG_ERR, pc->log, 0, " ngx_event_connect_perr = %d\n", rc);
 
     if (rc == -1) {
         err = ngx_socket_errno;
