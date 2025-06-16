@@ -779,6 +779,9 @@ ngx_epoll_notify(ngx_event_handler_pt handler)
 
 #endif
 
+/**
+ * 从epoll中获取事件，如果不需要排队则直接执行，否则插入队列中；
+ */
 
 static ngx_int_t
 ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)

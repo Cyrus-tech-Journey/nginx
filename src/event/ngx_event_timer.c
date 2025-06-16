@@ -65,6 +65,9 @@ ngx_event_expire_timers(void)
             return;
         }
 
+        /**
+         * 找一个时间最近的结点，最先超时的节点；
+         */
         node = ngx_rbtree_min(root, sentinel);
 
         /* node->key > ngx_current_msec */

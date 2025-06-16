@@ -309,8 +309,27 @@ ngx_event_accept(ngx_event_t *ev)
 
         log->data = NULL;
         log->handler = NULL;
+        /**
+         * ngx_listening_t; 
+         * 
+         * ls->handler是对外提供的接口，覆盖了以下几个场景：
+         *      a. ngx_http;
+         *      b. ngx_mail;
+         *      c. ngx_stream; 
+         * 四层负载则对应到了ngx_stream中；
+         */
 
-        ls->handler(c);
+        /**
+         * 有关框架的相关思考(程序设计的相关认知)
+         * 
+         * 在nginx IO框架中，如ls->handler()的接口随处可见，使用接口编程可使程序适配多种业务场景；
+         * 四层负载业务场景中，使用ngx_connection_t/ngx_session_t/ngx_upstream_t等数据结构来维持
+         * 程序运行的中间状态，使用接口编程则可以适配多种业务场景，不同的业务场景拥有不同的数据结构来
+         * 维持相关的状态；
+         * 图灵机是构建现代计算机的思想基础，从图灵机的视角来看应用程序，应用程序的执行过程有当前状态切换为另一个状态，
+         * 应用程序的底层数据结构在维护状态的转换。
+         */
+        ls->handler(c); // ngx_stream_init_connection;
 
         if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
             ev->available--;

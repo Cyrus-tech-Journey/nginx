@@ -403,13 +403,16 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
     ngx_stream_upstream_srv_conf_t   *uscf, **uscfp;
     ngx_stream_upstream_main_conf_t  *umcf;
 
-    c = s->connection;
+    c = s->connection; // ngx_stream_session_t中，则对应downstream的连接；
 
     pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
 
     ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0,
                    "proxy connection handler");
-
+    
+    /**
+     * 申请upstream, 找到upstream对应的socket;
+     */
     u = ngx_pcalloc(c->pool, sizeof(ngx_stream_upstream_t));
     if (u == NULL) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
@@ -453,6 +456,9 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
         return;
     }
 
+    /**
+     * upstream中对应的peer_socket对应的消息；
+     */
     u->downstream_buf.start = p;
     u->downstream_buf.end = p + pscf->buffer_size;
     u->downstream_buf.pos = p;
@@ -702,13 +708,16 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
     ngx_stream_upstream_t        *u;
     ngx_stream_proxy_srv_conf_t  *pscf;
 
-    c = s->connection;
+    c = s->connection; // -> downstream socket; 
 
     c->log->action = "connecting to upstream";
 
     pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
 
-    u = s->upstream;
+    u = s->upstream; // upstream;
+    /**
+     * 找到upstream上对应的
+     */
 
     u->connected = 0;
     u->proxy_protocol = pscf->proxy_protocol;
@@ -730,8 +739,17 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
     u->state->connect_time = (ngx_msec_t) -1;
     u->state->first_byte_time = (ngx_msec_t) -1;
     u->state->response_time = (ngx_msec_t) -1;
+    /**
+     * 所有代码围绕着以下几个部分展开：
+     *  1. 业务逻辑；
+     *  2. 核心数据结构的变化；
+     *  3. 代码逻辑；
+     *  4. 关联nginx设计的核心机制；
+     * 
+     * 整理业务代码时，需要综合以上几个维度来展开；
+     */
 
-    rc = ngx_event_connect_peer(&u->peer);
+    rc = ngx_event_connect_peer(&u->peer); // ngx_stream_upstream_t -> 
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0, "proxy connect: %i", rc);
 
@@ -768,10 +786,16 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
         return;
     }
 
+    /**
+     * 创建成功后，为ngx_stream_proxy_connect_handler创建回调；
+     */
     pc->read->handler = ngx_stream_proxy_connect_handler;
     pc->write->handler = ngx_stream_proxy_connect_handler;
 
-    ngx_add_timer(pc->write, pscf->connect_timeout);
+    /**
+     * 将peer_connection对应的write事件
+     */
+    ngx_add_timer(pc->write, pscf->connect_timeout); 
 }
 
 
@@ -1410,9 +1434,9 @@ ngx_stream_proxy_process_connection(ngx_event_t *ev, ngx_uint_t from_upstream)
     ngx_stream_upstream_t        *u;
     ngx_stream_proxy_srv_conf_t  *pscf;
 
-    c = ev->data;
-    s = c->data;
-    u = s->upstream;
+    c = ev->data;    // 1. 获取connection;
+    s = c->data;     // 2. 获取session;
+    u = s->upstream; // 3. 获取到upstream;
 
     if (c->close) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "shutdown timeout");
@@ -1426,6 +1450,9 @@ ngx_stream_proxy_process_connection(ngx_event_t *ev, ngx_uint_t from_upstream)
     pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
 
     if (ev->timedout) {
+        /**
+         * 当ev->timedout时，由ngx_event_expire_timers所出发；
+         */
         ev->timedout = 0;
 
         if (ev->delayed) {
@@ -1503,6 +1530,9 @@ ngx_stream_proxy_process_connection(ngx_event_t *ev, ngx_uint_t from_upstream)
         return;
     }
 
+    /**
+     * 核心进行超时判断的处理；
+     */
     if (from_upstream && !u->connected) {
         return;
     }
@@ -1510,7 +1540,11 @@ ngx_stream_proxy_process_connection(ngx_event_t *ev, ngx_uint_t from_upstream)
     ngx_stream_proxy_process(s, from_upstream, ev->write);
 }
 
-
+/**
+ * 为何要重新构建一个新的函数；
+ *  1. 为了性能；
+ *  2. 为了
+ */
 static void
 ngx_stream_proxy_connect_handler(ngx_event_t *ev)
 {
@@ -1583,7 +1617,9 @@ ngx_stream_proxy_test_connect(ngx_connection_t *c)
     return NGX_OK;
 }
 
-
+/**
+ * ngx_stream_proxy_process的作用是什么？
+ */
 static void
 ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
     ngx_uint_t do_write)
@@ -1607,6 +1643,9 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
     c = s->connection;
     pc = u->connected ? u->peer.connection : NULL;
 
+    /**
+     * nginx要退出系统时的操作；
+     */
     if (c->type == SOCK_DGRAM && (ngx_terminate || ngx_exiting)) {
 
         /* socket is already closed on worker shutdown */
@@ -1655,7 +1694,11 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
 
             if (*out || *busy || dst->buffered) {
                 c->log->action = send_action;
-
+                
+                /**
+                 * ngx_stream_write_filter 
+                 *   -> ngx_linux_sendfile_chain()
+                 */
                 rc = ngx_stream_top_filter(s, *out, from_upstream);
 
                 if (rc == NGX_ERROR) {
@@ -1695,6 +1738,9 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
 
             c->log->action = recv_action;
 
+            /**
+             * ngx_unix_recv();
+             */
             n = src->recv(src, b->last, size);
 
             if (n == NGX_AGAIN) {

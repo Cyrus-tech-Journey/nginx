@@ -258,6 +258,7 @@ ngx_stream_write_filter(ngx_stream_session_t *s, ngx_chain_t *in,
         return NGX_ERROR;
     }
 
+    // ngx_linux_sendfile_chain()
     chain = c->send_chain(c, *out, 0);
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0,

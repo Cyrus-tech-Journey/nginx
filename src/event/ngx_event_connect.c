@@ -31,7 +31,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_event_t       *rev, *wev;
     ngx_connection_t  *c;
 
-    rc = pc->get(pc, pc->data);
+    rc = pc->get(pc, pc->data); // peer.get = ngx_stream_upstream_get_round_robin_peer;
     if (rc != NGX_OK) {
         return rc;
     }
@@ -84,7 +84,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
                           "setsockopt(SO_KEEPALIVE) failed, ignored");
         }
     }
-
+    
     if (ngx_nonblocking(s) == -1) {
         ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                       ngx_nonblocking_n " failed");

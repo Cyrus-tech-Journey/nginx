@@ -133,7 +133,10 @@ ngx_stream_init_connection(ngx_connection_t *c)
         s->received += c->buffer->last - c->buffer->pos;
     }
 
-    s->connection = c;
+    /**
+     * 在这里构建出ngx_stream_session_t
+     */
+    s->connection = c; // ngx_stream_session_t
     c->data = s;
 
     cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
@@ -198,7 +201,17 @@ ngx_stream_init_connection(ngx_connection_t *c)
         return;
     }
 
+    /**
+     * 在 line 177中，对rev->handler进行了赋值，后续就调用了rev->handler()的方法，
+     * 为何不显示的调用ngx_stream_session_handler()方法，需要站在nginx整个事件驱动
+     * 模型的角度来理解该写法；
+     */
     rev->handler(rev);
+
+    /**
+     * 
+     * 
+     */
 }
 
 
@@ -275,7 +288,9 @@ ngx_stream_proxy_protocol_handler(ngx_event_t *rev)
     }
 
     c->log->action = "initializing session";
-
+    /**
+     * 在阅读代码时，要梳理出完整的逻辑链条，找到其对应的场景及业务上下文；
+     */
     ngx_stream_session_handler(rev);
 }
 

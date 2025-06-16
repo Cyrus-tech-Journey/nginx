@@ -332,7 +332,7 @@ ngx_stream_core_content_phase(ngx_stream_session_t *s,
         return NGX_OK;
     }
 
-    cscf->handler(s);
+    cscf->handler(s); // ngx_stream_proxy_handler(); 
 
     return NGX_OK;
 }
